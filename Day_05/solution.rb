@@ -25,8 +25,8 @@ class Segment
   def initialize(line_raw)
     coordinates_raw = line_raw.split("->").map(&:strip)
     @coordinates = []
-    coordinates_raw.each do |_|
-      x, y = _.split(",").map(&:to_i)
+    coordinates_raw.each do |c|
+      x, y = c.split(",").map(&:to_i)
       @coordinates << OpenStruct.new(x: x, y: y)
     end
   end
@@ -55,8 +55,8 @@ class Segment
       # Diagonal line
       diff = 0
       if coordinate_start.x < coordinate_end.x
-        (coordinate_start.x..coordinate_end.x).each do |xxxx|
-          yield(xxxx, coordinate_start.y + diff)
+        (coordinate_start.x..coordinate_end.x).each do |intermediate_x|
+          yield(intermediate_x, coordinate_start.y + diff)
           if coordinate_start.y > coordinate_end.y
             diff -= 1
           else
@@ -64,8 +64,8 @@ class Segment
           end          
         end
       else
-        (coordinate_end.x..coordinate_start.x).each do |xxxx|
-          yield(xxxx, coordinate_end.y + diff)
+        (coordinate_end.x..coordinate_start.x).each do |intermediate_y|
+          yield(intermediate_y, coordinate_end.y + diff)
           if coordinate_end.y > coordinate_start.y
             diff -= 1
           else
@@ -97,7 +97,7 @@ class Diagram
   attr_accessor :overlapping_cells_count
 
   def initialize()
-    @lines = 1000.times.map {|x| 1000.times.map {|x| Cell.new(0) } }
+    @lines = 1000.times.map {|y| 1000.times.map {|x| Cell.new(0) } }
     @overlapping_cells_count = 0
   end
 
@@ -136,8 +136,9 @@ segments.each do |segment|
   diagram.process_segment(segment)
 end
 
-puts diagram.to_s
-result = diagram.overlapping_cells_count
+# puts diagram.to_s
 
-puts "Result : #{result}"
+puts "Result : #{diagram.overlapping_cells_count}"
+
+# To export result:
 # File.open("output.txt", 'w') { |file| file.write(diagram.to_s) }
