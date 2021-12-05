@@ -140,3 +140,4 @@ puts diagram.to_s
 result = diagram.overlapping_cells_count
 
 puts "Result : #{result}"
+# File.open("output.txt", 'w') { |file| file.write(diagram.to_s) }
