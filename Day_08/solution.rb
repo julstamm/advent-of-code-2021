@@ -1,5 +1,3 @@
-require 'byebug'
-
 input = "be cfbegad cbdgef fgaecd cgeb fdcge agebfd fecdb fabcd edb | fdgacbe cefdb cefbgd gcbe
   edbfga begcd cbg gc gcadebf fbgde acbgfd abcde gfcbed gfec | fcgedb cgb dgebacf gc
   fgaebd cg bdaec gdafb agbcfd gdcbef bgcad gfac gcb cdgabef | cg cg fdcagb cbg
@@ -11,164 +9,153 @@ input = "be cfbegad cbdgef fgaecd cgeb fdcge agebfd fecdb fabcd edb | fdgacbe ce
   egadfb cdbfeg cegd fecab cgb gbdefca cg fgcdab egfdb bfceg | gbdfcae bgc cg cgb
   gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce"
 
-# input = File.read("input.txt")
-
 input = "acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf"
+input = File.read("input.txt")
 
 class Entry
   attr_accessor :signal_patterns, :output_characters
 
-  INITIAL_CONFIGURATION = {
-    "a" => "0",
-    "b" => "1",
-    "c" => "2",
-    "d" => "3",
-    "e" => "4",
-    "f" => "5",
-    "g" => "6",
+  CHARACTER_DEFINITIONS = {
+    "0" => %w[ a b c e f g ],
+    "1" => %w[ c f ],
+    "2" => %w[ a c d e g ],
+    "3" => %w[ a c d f g ],
+    "4" => %w[ b c d f ],
+    "5" => %w[ a b d f g ],
+    "6" => %w[ a b d e f g ],
+    "7" => %w[ a c f ],
+    "8" => %w[ a b c d e f g ],
+    "9" => %w[ a b c d f g ]
   }
 
-  CHARACTER_DICTIONNARY = {
-    "abcefg" => 0,
-    "cf" => 1,
-    "acdeg" => 2,
-    "acdfg" => 3,
-    "bcdf" => 4,
-    "abdfg" => 5,
-    "abdefg" => 6,
-    "acf" => 7,
-    "abcdefg" => 8,
-    "abcdfg" => 9
-  }
-
-  # a:  7,8
-  # e:  8
-  # g:  8
-  # b:  4,8
-  # d:  4,8
-  # c:  1,4,7,8
-  # f:  1,4,7,8
-
-  def initialize(signal_patterns, output_characters)
-    @signal_patterns = signal_patterns
-    @output_characters = output_characters
-  end
-
-  def translate(character_to_translate)
-    alternate_configuration = calculate_alternate_configuration
-    final_led_zone = alternate_configuration[character_to_translate]
-    INITIAL_CONFIGURATION.select {|_, value| value == final_led_zone }.first[0]
+  def initialize(entry)
+    signal_patterns_raw, output_characters_raw = entry.split("|").map(&:strip)
+    @signal_patterns = signal_patterns_raw.split(" ")
+    @output_characters = output_characters_raw.split(" ")
   end
 
   def calculate_ouput
     result = ""
     @output_characters.each do |oc|
-      display_characters_array = []
-      oc.split("").each do |character_to_translate|
-        display_characters_array << translate(character_to_translate)
-      end
-
-      CHARACTER_DICTIONNARY.select{|k| k.length == display_characters_array.length }.each do |cd|
-        definition_array = cd[0].split("")
-        if (display_characters_array & definition_array).length == definition_array.length
-          result << cd[1].to_s
-          break
-        end
-      end
-
+      display_characters_array = translate_character(oc)
+      result << CHARACTER_DEFINITIONS.select{|k, v| v.sort == display_characters_array.sort }.first[0]
     end
-
     result.to_i
   end
 
   private
 
-  def calculate_alternate_configuration
-    # relative_positions = [
-    #   [0,2,3,5,6,7,8,9],    # a
-    #   [0,4,5,6,8,9],        # b
-    #   [0,1,2,3,4,7,8,9],    # c
-    #   [2,3,4,5,6,8,9],      # d
-    #   [0,2,6,8],            # e
-    #   [0,1,3,4,5,6,7,8,9],  # f
-    #   [0,2,3,5,6,8,9]       # g
-    # ]
+  def translate_character(output_character)
+    output_character.split("").map do |connection_to_translate|
+      final_led_zone = alternate_configuration[connection_to_translate]
 
-    # @signal_patterns = ["acedgfb", "cdfbe", "gcdfa", "fbcad", "dab", "cefabd", "cdfgeb", "eafb", "cagedb", "ab"]
-    # @output_characters = ["cdfeb", "fcadb", "cdfeb", "cdbaf"]
+      initial_configuration = {
+        "a" => "0",
+        "b" => "1",
+        "c" => "2",
+        "d" => "3",
+        "e" => "4",
+        "f" => "5",
+        "g" => "6",
+      }
+      initial_configuration.select {|k, v| v == final_led_zone }.first[0]
+    end
+  end
 
-    # nb_of_segments = {
-    #   2 => [1],
-    #   3 => [7],
-    #   4 => [4],
-    #   5 => [2,3,5],
-    #   6 => [0,6,9],
-    #   7 => [8]
-    # }
+  def alternate_configuration
+    return @_alternate_configuration if defined?(@_alternate_configuration)
 
-    result = {}
-    temp = {
-      "a" => [],
-      "b" => [],
-      "c" => [],
-      "d" => [],
-      "e" => [],
-      "f" => [],
-      "g" => [],
+    temp2 = {
+      "0" => [],
+      "1" => [],
+      "2" => [],
+      "3" => [],
+      "4" => [],
+      "5" => [],
+      "6" => [],
+      "7" => [],
+      "8" => [],
+      "9" => [],
     }
 
     @signal_patterns.each do |sp|
+      # '1'
       if sp.length == 2
         sp.split("").each do |cc|
-          temp[cc] << 1
+          temp2["1"] << cc
         end
       end
 
+      # '7'
       if sp.length == 3
         sp.split("").each do |cc|
-          temp[cc] << 7
+          temp2["7"] << cc
         end
       end
 
+      # '4'
       if sp.length == 4
         sp.split("").each do |cc|
-          temp[cc] << 4
+          temp2["4"] << cc
         end
       end
 
+      # '8'
       if sp.length == 7
         sp.split("").each do |cc|
-          temp[cc] << 8
+          temp2["8"] << cc
         end
       end
     end
-
-    # Test for 'a'
-    x = temp.select{|k,v| v.sort == [7,8] }.first&.first
-    if x
-      result[x] = INITIAL_CONFIGURATION["a"]
-      temp[x] += [0,2,3,5,6,9]
-    end
     
-    result.merge({
-      "a" => "2",
-      "b" => "5",
-      "c" => "6",
-      # "d" => "0",
-      "e" => "1",
-      "f" => "3",
-      "g" => "4",
-    })
+    # '2', '3' and '5'
+    _other = @signal_patterns.select{|sp| (sp.length == 5) }.group_by {|sp| ((temp2["7"] | temp2["4"]) - sp.split("")).length }
+    _other[2].first.split("").each do |cc|
+      temp2["2"] << cc
+    end
+    _other[1].select{|sp| (sp.split("") - temp2["7"]).length == 2 }.first.split("").each do |cc|
+      temp2["3"] << cc
+    end
+    _other[1].select{|sp| sp != temp2["3"].join }.first.split("").each do |cc|
+      temp2["5"] << cc
+    end
+
+    # '9', '3' and '5'
+    _other = @signal_patterns.select{|sp| (sp.length == 6) }.group_by {|sp| (sp.split("") - temp2["3"]).length }
+    _other[1].first.split("").each do |cc|
+      temp2["9"] << cc
+    end
+    _other[2].select{|sp| (sp.split("") - temp2["5"]).length == 1 }.first.split("").each do |cc|
+      temp2["6"] << cc
+    end
+    _other[2].select{|sp| sp != temp2["6"].join }.first.split("").each do |cc|
+      temp2["0"] << cc
+    end
+
+
+    a_position = temp2["7"] - temp2["1"]
+    b_position = temp2["9"] - temp2["3"]
+    c_position = temp2["9"] - temp2["5"]
+    d_position = temp2["8"] - temp2["0"]
+    e_position = temp2["6"] - temp2["5"]
+    f_position = temp2["1"] - c_position
+    g_position = temp2["3"] - temp2["7"]- d_position
+
+    @_alternate_configuration = {
+      a_position.first => "0",
+      b_position.first => "1",
+      c_position.first => "2",
+      d_position.first => "3",
+      e_position.first => "4",
+      f_position.first => "5",
+      g_position.first => "6",
+    }
   end
 end
 
 result = 0
-input.split("\n").each do |entry|
-  signal_patterns_raw, output_characters_raw = entry.split("|").map(&:strip)
-  signal_patterns = signal_patterns_raw.split(" ")
-  output_characters = output_characters_raw.split(" ")
-  result += Entry.new(signal_patterns, output_characters).calculate_ouput
+input.split("\n").each do |entry_raw|
+  result += Entry.new(entry_raw).calculate_ouput
 end
 
-# raise unless result == 61229
-puts "YEAH" if result == 5353
+puts "Result : #{result}"

@@ -1,5 +1,3 @@
-# require 'byebug'
-
 input = %{
 2199943210
 3987894921
